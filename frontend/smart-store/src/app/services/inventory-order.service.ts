@@ -45,7 +45,7 @@ export class InventoryOrderService {
   }
 
   updateProductStock(productId: number, newQuantity: number): Observable<any> {
-    return this.http.put<any>(`${this.api}/products/${productId}/stock`, { NewQuantity: newQuantity }).pipe(
+    return this.http.put<any>(`${this.api}/products/${productId}/stock`, { newQuantity }).pipe(
       timeout(120000)
     );
   }

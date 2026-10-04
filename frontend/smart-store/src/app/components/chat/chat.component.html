@@ -1,5 +1,6 @@
 <div class="chat-wrapper">
 
+  <!-- Sidebar -->
   <div class="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-logo-text">
@@ -11,12 +12,12 @@
     <div class="sidebar-search">
       <span class="search-icon">🔍</span>
       <input type="text" [(ngModel)]="searchQuery" placeholder="...הפש עובד או הזמנה" />
-      <span class="calendar-icon">📅</span>
     </div>
 
+    <!-- Active Staff -->
     <div class="active-staff-section">
       <div class="staff-item active">
-        <div class="staff-avatar">{{ auth.username[0].toUpperCase() }}</div>
+        <img class="staff-avatar-image" src="/person.png" alt="משתמש מחובר" />
         <div class="staff-info">
           <span class="staff-name">{{ auth.username }}</span>
         </div>
@@ -47,36 +48,53 @@
     </div>
   </div>
 
+  <!-- Chat box -->
   <div class="chat-box">
 
+    <!-- Header -->
     <div class="chat-header">
       <div class="header-left">
-        <div class="header-avatar"></div>
+        <img class="header-avatar-image" src="/person.png" alt="משתמש" />
         <div class="header-name">{{ auth.username }}</div>
       </div>
       <div class="header-logo">Allgift<span class="logo-accent">4U</span></div>
     </div>
 
+    <!-- Messages -->
     <div class="chat-messages" #messagesContainer>
       <div class="date-separator">Today</div>
 
+      <!-- Dynamic Messages -->
       <div *ngFor="let msg of messages; let i = index" 
            class="message" 
            [class.user]="msg.role === 'user'"
            [class.bot]="msg.role === 'bot'">
         <div class="avatar">
-          <span *ngIf="msg.role === 'bot'">🤖</span>
+          <img *ngIf="msg.role === 'bot'" src="/robot.png" alt="רובוט" />
+          <img *ngIf="msg.role === 'user'" src="/person.png" alt="משתמש" />
         </div>
         <div class="bubble-wrap">
-          <div class="bubble">
-            <p>{{ msg.text }}</p>
-            <span class="msg-time">{{ msg.timestamp }}</span>
-          </div>
+            <div class="bubble">
+              <p>{{ msg.text }}</p>
+
+              <button
+                type="button"
+                class="delivery-note-btn"
+                *ngIf="msg.deliveryNotePdf"
+                (click)="downloadDeliveryNote(msg)">
+                <span>📄</span>
+                הורד תעודת משלוח
+              </button>
+
+              <span class="msg-time">{{ msg.timestamp }}</span>
+            </div>
+
         </div>
       </div>
 
+      <!-- Loading Indicator -->
       <div class="message bot" *ngIf="loading">
-        <div class="avatar">🤖</div>
+        <div class="avatar"><img src="/robot.png" alt="רובוט" /></div>
         <div class="bubble-wrap">
           <div class="typing-bubble">
             <span></span><span></span><span></span>
@@ -85,12 +103,14 @@
       </div>
     </div>
 
+    <!-- Image Preview -->
     <div class="image-preview-bar" *ngIf="imagePreview">
       <img [src]="imagePreview" alt="Preview" />
       <span>תמונה מוכנה לשליחה</span>
       <button type="button" class="remove-img" (click)="clearImage()">✕</button>
     </div>
 
+    <!-- Chat Input Area -->
     <div class="chat-input-area">
       <input #imgFileInput type="file" accept="image/*" (change)="onFileSelected($event)" style="display:none" />
       
@@ -99,6 +119,7 @@
         <button type="button" class="action-btn" (click)="imgFileInput.click()" title="Attachment" [disabled]="loading">📎</button>
         <button type="button" class="action-btn" (click)="imgFileInput.click()" title="Image" [disabled]="loading">🖼️</button>
         
+        <!-- Emoji Picker -->
         <div class="emoji-picker input-emoji-picker" *ngIf="showInputEmoji" (click)="$event.stopPropagation()">
           <span *ngFor="let e of emojiList" class="emoji-item" (click)="addEmojiToInput(e)">{{ e }}</span>
         </div>

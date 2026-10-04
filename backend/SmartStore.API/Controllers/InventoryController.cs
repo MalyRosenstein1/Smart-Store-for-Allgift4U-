@@ -47,6 +47,26 @@ public class InventoryController : ControllerBase
         }
     }
 
+    [HttpPost("process-order-pdf")]
+    public async Task<IActionResult> ProcessOrderPdf([FromBody] OrderRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request?.OrderName))
+            return BadRequest("Order name is required.");
+
+        try
+        {
+            var result = await _inventoryService.ProcessIncomingOrder(request.OrderName);
+            if (result.DeliveryNotePdf.Length == 0)
+                return StatusCode(500, new { error = "Delivery note PDF was not generated." });
+
+            return File(result.DeliveryNotePdf, "application/pdf", result.DeliveryNoteFileName);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpPost("process-chat")]
     public async Task<IActionResult> ProcessChat([FromBody] ChatRequest request)
     {

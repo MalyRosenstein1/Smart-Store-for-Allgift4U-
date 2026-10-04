@@ -23,6 +23,13 @@
         <span *ngIf="item.aiTriggered"> 🤖 AI הופעל</span>
       </li>
     </ul>
+
+    <div *ngIf="result.emailDrafts?.length" class="email-drafts">
+      <h3>טיוטות מייל לספקים</h3>
+      <ul>
+        <li *ngFor="let draft of result.emailDrafts">{{ draft }}</li>
+      </ul>
+    </div>
   </div>
   <p class="error" *ngIf="error">❌ {{ error }}</p>
 </div>

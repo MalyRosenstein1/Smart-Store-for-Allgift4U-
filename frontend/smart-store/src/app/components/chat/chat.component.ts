@@ -8,6 +8,13 @@ import { ChatHistoryService, StoredMessage, ChatSession } from '../../services/c
 interface ChatMessage extends StoredMessage {}
 
 type ChatMode = 'menu' | 'order' | 'stock' | 'check';
+type StockUpdateOperator = '+' | '-' | '=';
+
+interface StockUpdateParseResult {
+  operator: StockUpdateOperator;
+  quantity: number;
+  productName: string;
+}
 
 const EMOJI_LIST = [
   '😀','😁','😂','🤣','😃','😄','😅','😆','😉','😊',
@@ -47,6 +54,18 @@ export class ChatComponent implements AfterViewChecked {
   
   private shouldScrollToBottom = false;
   private pendingImage: { base64: string; mimeType: string; fileName: string } | null = null;
+  private readonly productNameAliases: Record<string, string> = {
+    'בירה': 'בירה בוטל',
+    'בקבוק בירה': 'בירה בוטל',
+    'כוס': 'כוס חד פעמית',
+    'בר שוקולד': 'חטיף שוקולד',
+    'ברים שוקולד': 'חטיף שוקולד',
+    'חטיף שוקולד': 'חטיף שוקולד',
+    'אריזה': 'אריזת מתנה',
+    'קופסה': 'קופסת מתנה',
+    'ברכה': 'ברכת מזל טוב',
+    'צלופן': 'שקית צלופן'
+  };
 
   constructor(
     private inventoryService: InventoryOrderService,
@@ -121,7 +140,7 @@ export class ChatComponent implements AfterViewChecked {
         this.addBotMessage('📦 כתוב את שם ההזמנה:');
       } else if (text === '2' || text.includes('מלאי')) {
         this.mode = 'stock';
-        this.addBotMessage('📝 עדכון מלאי:\n\n➕ להוסיף כמות: כתוב **+20 צלופנים**\n🔄 לקבוע כמות חדשה: כתוב **=20 צלופנים**');
+        this.addBotMessage('📝 עדכון מלאי:\n\n➕ להוסיף כמות: כתוב **+20 צלופנים**\n➖ להפחית כמות: כתוב **-20 צלופנים**\n🔄 לקבוע כמות חדשה: כתוב **=20 צלופנים**');
       } else if (text === '3' || text.includes('בדיקה')) {
         this.mode = 'check';
         this.addBotMessage('🔍 כתוב שם הזמנה לבדיקה, לדוגמה: חבילה לחתן');
@@ -143,7 +162,20 @@ export class ChatComponent implements AfterViewChecked {
         next: (res: any) => {
           const itemLines = (res.items ?? []).map((i: any) =>
             `• ${i.productName}: הוסר ${i.quantityRemoved}, נשאר ${i.newQuantity}`).join('\n');
-          this.addBotMessage(`✅ ההזמנה "${res.orderName}" אפשרית ועובדה!\n\n${itemLines}\n\nמה תרצה לעשות עכשיו?\n1️⃣ עיבוד הזמנה\n2️⃣ עדכון מלאי`);
+          const warningLines = (res.warnings ?? res.StockDepletionWarnings ?? [])
+            .map((warning: string) => `⚠️ ${warning}`)
+            .join('\n');
+          const warningText = warningLines ? `\n\n${warningLines}` : '';
+          const deliveryNotePdf = res.deliveryNotePdf ?? res.DeliveryNotePdf;
+          const deliveryNoteFileName = res.deliveryNoteFileName ?? res.DeliveryNoteFileName;
+          this.addBotMessage(
+            `✅ ההזמנה "${res.orderName}" אפשרית ועובדה!\n\n${itemLines}${warningText}\n\nמה תרצה לעשות עכשיו?\n1️⃣ עיבוד הזמנה\n2️⃣ עדכון מלאי`,
+            [],
+            [],
+            [],
+            deliveryNotePdf,
+            deliveryNoteFileName
+          );
           this.mode = 'menu';
         },
         error: (err: any) => {
@@ -158,38 +190,52 @@ export class ChatComponent implements AfterViewChecked {
     }
 
     if (this.mode === 'stock') {
-      // +20 צלופנים = הוסף | =20 צלופנים = קבע
-      const match = text.match(/^([+=])(\d+)\s+(.+)$/);
-      if (!match) {
-        this.addBotMessage('❌ פורמט לא תקין.\n➕ להוסיף: **+20 צלופנים**\n🔄 לקבוע: **=20 צלופנים**');
+      const parsed = this.parseStockUpdateInput(text);
+      if (!parsed) {
+        this.addBotMessage('❌ פורמט לא תקין.\n➕ להוסיף: **+20 צלופנים**\n➖ להפחית: **-20 צלופנים**\n🔄 לקבוע: **=20 צלופנים**');
         this.loading = false;
         return;
       }
-      const operator = match[1];
-      const quantity = parseInt(match[2]);
-      const productName = match[3].trim();
 
       this.inventoryService.getProducts().subscribe({
         next: (products: any[]) => {
-          const product = products.find((p: any) =>
-            p.productName.includes(productName) || productName.includes(p.productName));
+          const product = this.findProductByName(products, parsed.productName);
           if (!product) {
-            this.addBotMessage(`❌ המוצר "${productName}" לא נמצא במערכת.`);
+            this.addBotMessage(`❌ המוצר "${parsed.productName}" לא נמצא במערכת.`);
             return;
           }
-          const newQty = operator === '+'
-            ? (product.currentQuantity ?? 0) + quantity
-            : quantity;
-          this.inventoryService.updateProductStock(product.productID, newQty).subscribe({
+
+          const productId = this.getProductID(product);
+          const currentQuantity = this.getProductQuantity(product);
+          if (!productId) {
+            this.addBotMessage('❌ לא ניתן לעדכן את המלאי כי מזהה המוצר חסר.');
+            return;
+          }
+
+          const newQty = parsed.operator === '+'
+            ? currentQuantity + parsed.quantity
+            : parsed.operator === '-'
+              ? Math.max(0, currentQuantity - parsed.quantity)
+              : parsed.quantity;
+
+          this.inventoryService.updateProductStock(productId, newQty).subscribe({
             next: (res: any) => {
-              const action = operator === '+' ? `הוספו ${quantity}, סה"כ` : 'נקבע';
-              this.addBotMessage(`✅ המלאי של "${res.productName}" ${action} ${res.newQuantity} יחידות\n\nמה תרצה לעשות עכשיו?\n1️⃣ עיבוד הזמנה\n2️⃣ עדכון מלאי`);
+              const action = parsed.operator === '+'
+                ? `הוספו ${parsed.quantity}, סה"כ`
+                : parsed.operator === '-'
+                  ? `הופחתו ${parsed.quantity}, סה"כ`
+                  : 'נקבע';
+              const updatedProductName = res.productName ?? res.ProductName ?? this.getProductName(product);
+              this.addBotMessage(`✅ המלאי של "${updatedProductName}" ${action} ${res.newQuantity ?? res.NewQuantity} יחידות\n\nמה תרצה לעשות עכשיו?\n1️⃣ עיבוד הזמנה\n2️⃣ עדכון מלאי`);
               this.mode = 'menu';
             },
             error: () => this.addBotMessage('❌ שגיאה בעדכון המלאי')
           });
         },
-        error: () => this.addBotMessage('❌ שגיאה בטעינת המוצרים')
+        error: (err: any) => {
+          const errorMsg = err.error?.error || err.message || 'שגיאה בטעינת המוצרים';
+          this.addBotMessage(`❌ ${errorMsg}`);
+        }
       });
       return;
     }
@@ -253,13 +299,15 @@ export class ChatComponent implements AfterViewChecked {
     });
   }
 
-  private addBotMessage(text: string, items: any[] = [], recommendations: any[] = [], warnings: string[] = []): void {
+  private addBotMessage(text: string, items: any[] = [], recommendations: any[] = [], warnings: string[] = [], deliveryNotePdf?: string, deliveryNoteFileName?: string): void {
     this.messages = [...this.messages, {
       role: 'bot',
       text,
       items,
       recommendations,
       warnings,
+      deliveryNotePdf,
+      deliveryNoteFileName,
       timestamp: this.getCurrentTime()
     }];
     this.loading = false;
@@ -269,6 +317,31 @@ export class ChatComponent implements AfterViewChecked {
       this.sessions = this.historyService.getSessions(this.auth.username, this.currentSessionId);
     }
     this.cdr.detectChanges();
+  }
+
+  downloadDeliveryNote(message: ChatMessage): void {
+    const base64 = message.deliveryNotePdf;
+    if (!base64) return;
+
+    const base64Data = base64.includes(',') ? base64.split(',')[1] : base64;
+    const byteCharacters = atob(base64Data);
+    const byteNumbers = new Array<number>(byteCharacters.length);
+
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = 'DeliveryNote.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   }
 
   onFileSelected(event: Event): void {
@@ -317,6 +390,101 @@ export class ChatComponent implements AfterViewChecked {
       event.preventDefault();
       this.send();
     }
+  }
+
+  private normalizeText(value: string): string {
+    return (value ?? '')
+      .toString()
+      .normalize('NFKD')
+      .replace(/[\u0591-\u05BD\u05BF\u05C1-\u05C2\u05C4-\u05C5\u05C7]/g, '')
+      .replace(/[\u200E\u200F]/g, '')
+      .replace(/ך/g, 'כ')
+      .replace(/ם/g, 'מ')
+      .replace(/ן/g, 'נ')
+      .replace(/ף/g, 'פ')
+      .replace(/ץ/g, 'צ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  }
+
+  private parseStockUpdateInput(text: string): StockUpdateParseResult | null {
+    const cleaned = text.trim()
+      .replace(/\*\*/g, '')
+      .replace(/__/g, '')
+      .replace(/[\u200E\u200F]/g, '')
+      .replace(/\s+/g, ' ');
+    const prefixMatch = cleaned.match(/^([+\-=])\s*(\d+)\s*(.+)$/u);
+    if (prefixMatch) {
+      return {
+        operator: prefixMatch[1] as StockUpdateOperator,
+        quantity: Number(prefixMatch[2]),
+        productName: prefixMatch[3].trim().replace(/[.!?:]+$/u, '')
+      };
+    }
+
+    const addMatch = cleaned.match(/^(?:הוסף|הוספת|להוסיף|הוספה)\s+(\d+)\s*(.+)$/u);
+    if (addMatch) {
+      return { operator: '+', quantity: Number(addMatch[1]), productName: addMatch[2].trim().replace(/[.!?:]+$/u, '') };
+    }
+
+    const subtractMatch = cleaned.match(/^(?:הפחת|הפחתי|להפחית|הפחתה|החסר|הסר)\s+(\d+)\s*(.+)$/u);
+    if (subtractMatch) {
+      return { operator: '-', quantity: Number(subtractMatch[1]), productName: subtractMatch[2].trim().replace(/[.!?:]+$/u, '') };
+    }
+
+    const setMatch = cleaned.match(/^(?:קבע|לקבוע|שנה ל|לעדכן ל)\s+(\d+)\s*(.+)$/u);
+    if (setMatch) {
+      return { operator: '=', quantity: Number(setMatch[1]), productName: setMatch[2].trim().replace(/[.!?:]+$/u, '') };
+    }
+
+    return null;
+  }
+
+  private findProductByName(products: any[], productName: string): any | undefined {
+    const normalizedProductName = this.normalizeText(productName);
+    const canonicalProductName = this.getCanonicalProductName(normalizedProductName);
+    if (!canonicalProductName) return undefined;
+
+    const exactProduct = products.find((product: any) =>
+      this.normalizeText(this.getProductName(product)) === canonicalProductName);
+
+    if (exactProduct) return exactProduct;
+
+    if (canonicalProductName !== normalizedProductName) {
+      const fallbackExactProduct = products.find((product: any) =>
+        this.normalizeText(this.getProductName(product)) === normalizedProductName);
+
+      if (fallbackExactProduct) return fallbackExactProduct;
+    }
+
+    if (normalizedProductName.length < 3) return undefined;
+
+    const storedNameContainsInput = products.filter((product: any) =>
+      this.normalizeText(this.getProductName(product)).includes(normalizedProductName));
+
+    if (storedNameContainsInput.length === 1) return storedNameContainsInput[0];
+
+    const inputContainsStoredName = products.filter((product: any) =>
+      normalizedProductName.includes(this.normalizeText(this.getProductName(product))));
+
+    return inputContainsStoredName.length === 1 ? inputContainsStoredName[0] : undefined;
+  }
+
+  private getCanonicalProductName(normalizedProductName: string): string {
+    return this.productNameAliases[normalizedProductName] ?? normalizedProductName;
+  }
+
+  private getProductName(product: any): string {
+    return product?.productName ?? product?.ProductName ?? '';
+  }
+
+  private getProductID(product: any): number {
+    return Number(product?.productID ?? product?.ProductID ?? 0);
+  }
+
+  private getProductQuantity(product: any): number {
+    return Number(product?.currentQuantity ?? product?.CurrentQuantity ?? 0);
   }
 
   private scrollToBottom(): void {

@@ -29,6 +29,7 @@ public class ChatResponse
 {
     public string BotMessage { get; set; } = string.Empty;
     public OrderResult? OrderResult { get; set; }
+    public ProductStockResult? StockResult { get; set; }
     public bool IsOrderProcessing { get; set; }
 }
 
@@ -39,6 +40,9 @@ public class OrderResult
     public List<OrderItemResult> Items { get; set; } = new();
     public List<string> StockDepletionWarnings { get; set; } = new();
     public List<RecommendationDto> Recommendations { get; set; } = new();
+    public List<string> EmailDrafts { get; set; } = new();
+    public byte[] DeliveryNotePdf { get; set; } = Array.Empty<byte>();
+    public string DeliveryNoteFileName { get; set; } = string.Empty;
 }
 
 public class OrderItemResult

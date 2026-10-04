@@ -6,6 +6,8 @@ export interface StoredMessage {
   items?: any[];
   recommendations?: any[];
   warnings?: string[];
+  deliveryNotePdf?: string;
+  deliveryNoteFileName?: string;
   emojis?: string[];
   timestamp?: string;
 }
