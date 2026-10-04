@@ -1,0 +1,27 @@
+.inventory {
+  padding: 24px;
+  direction: rtl;
+
+  h2 { margin-bottom: 16px; color: #3d1f0f; font-size: 20px; font-weight: 700; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 32px;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e8d0b0;
+    box-shadow: 0 2px 12px rgba(61, 31, 15, 0.07);
+
+    th, td { padding: 10px 14px; border: 1px solid #f0e0cc; text-align: right; color: #3d1f0f; }
+    th { background: #c8762a; color: #fff; font-weight: 700; }
+    tr:hover td { background: #fdf6ee; }
+    tr.missing td { background: rgba(239, 68, 68, 0.06); color: #dc2626; }
+  }
+
+  ul {
+    list-style: none; padding: 0;
+    li { padding: 8px; border-bottom: 1px solid #f0e0cc; color: #dc2626; }
+  }
+}

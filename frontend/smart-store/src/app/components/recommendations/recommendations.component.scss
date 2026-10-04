@@ -1,0 +1,37 @@
+.recommendations {
+  padding: 24px; direction: rtl; max-width: 500px;
+
+  h2 { margin-bottom: 20px; color: #3d1f0f; font-size: 20px; font-weight: 700; }
+
+  .field {
+    display: flex; flex-direction: column; margin-bottom: 16px;
+
+    label { font-weight: 600; margin-bottom: 4px; color: #7a3e1a; }
+
+    input {
+      padding: 10px 14px;
+      background: #fdf6ee;
+      border: 1.5px solid #e0c8a8;
+      border-radius: 10px;
+      font-size: 14px; color: #3d1f0f;
+      outline: none; font-family: inherit; direction: rtl;
+      transition: border 0.2s;
+
+      &::placeholder { color: rgba(122, 62, 26, 0.35); }
+      &:focus { border-color: #c8762a; box-shadow: 0 0 0 3px rgba(200,118,42,0.1); }
+    }
+  }
+
+  button {
+    padding: 10px 24px;
+    background: linear-gradient(135deg, #c8762a, #e8943a);
+    color: #fff; border: none; border-radius: 10px;
+    cursor: pointer; font-size: 15px; font-weight: 700;
+    box-shadow: 0 4px 14px rgba(200,118,42,0.25);
+    transition: all 0.2s;
+
+    &:hover { background: linear-gradient(135deg, #b36820, #c8762a); transform: translateY(-1px); }
+  }
+
+  .success { margin-top: 16px; color: #059669; font-weight: 600; }
+}

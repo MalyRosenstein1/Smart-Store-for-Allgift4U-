@@ -1,0 +1,80 @@
+<div class="inventory">
+  <div class="inventory-header">
+    <h2>מלאי חומרי גלם</h2>
+    <button type="button" (click)="refreshInventory()" [disabled]="loading">
+      {{ loading ? 'מרענן...' : 'רענן מלאי' }}
+    </button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>שם מוצר</th>
+        <th>כמות נוכחית</th>
+        <th>כמות מינימום</th>
+        <th>סטטוס</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let p of products" [class.missing]="p.currentQuantity < p.minQuantity">
+        <td>{{ p.productName }}</td>
+        <td>{{ p.currentQuantity }}</td>
+        <td>{{ p.minQuantity }}</td>
+        <td>{{ p.currentQuantity < p.minQuantity ? '⚠️ חסר' : '✅ תקין' }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>מוצרים חסרים</h2>
+  <p *ngIf="missingProducts.length === 0">אין מוצרים חסרים</p>
+  <ul>
+    <li *ngFor="let p of missingProducts">
+      {{ p.productName }} - נשאר {{ p.currentQuantity }} מתוך מינימום {{ p.minQuantity }}
+    </li>
+  </ul>
+
+  <section class="inventory-actions">
+    <h2>ניהול מלאי</h2>
+    <div *ngFor="let p of products" class="stock-update-row">
+      <span>{{ p.productName }}</span>
+      <input
+        type="number"
+        [(ngModel)]="stockUpdateValues[p.productID]"
+        min="0"
+        [disabled]="loading"
+      />
+      <button type="button" (click)="updateStock(p.productID)" [disabled]="loading">
+        עדכן מלאי
+      </button>
+    </div>
+  </section>
+
+  <section class="template-creator">
+    <h2>צור תבנית הזמנה</h2>
+    <div class="template-form">
+      <label>
+        שם תבנית:
+        <input type="text" [(ngModel)]="newTemplateName" [disabled]="loading" />
+      </label>
+      <label>
+        תיאור:
+        <input type="text" [(ngModel)]="newTemplateDesc" [disabled]="loading" />
+      </label>
+      <label>
+        מוצר:
+        <select [(ngModel)]="newTemplateProductId" [disabled]="loading">
+          <option *ngFor="let p of products" [value]="p.productID">{{ p.productName }}</option>
+        </select>
+      </label>
+      <label>
+        כמות דרושה:
+        <input type="number" [(ngModel)]="newTemplateQuantity" min="1" [disabled]="loading" />
+      </label>
+      <button type="button" (click)="createTemplate()" [disabled]="loading || !newTemplateName.trim()">
+        צור תבנית
+      </button>
+      <p class="success" *ngIf="templateResultMessage">✅ {{ templateResultMessage }}</p>
+      <p class="error" *ngIf="templateErrorMessage">❌ {{ templateErrorMessage }}</p>
+    </div>
+  </section>
+</div>

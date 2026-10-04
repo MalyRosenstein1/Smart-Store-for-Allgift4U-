@@ -1,0 +1,48 @@
+<div class="recommendations">
+  <h2>המלצות רכש</h2>
+
+  <table *ngIf="recommendations.length > 0">
+    <thead>
+      <tr>
+        <th>מזהה מוצר</th>
+        <th>שם ספק</th>
+        <th>מחיר</th>
+        <th>קישור</th>
+        <th>סטטוס</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let r of recommendations">
+        <td>{{ r.productID }}</td>
+        <td>{{ r.supplierName }}</td>
+        <td>{{ r.price | currency:'ILS' }}</td>
+        <td><a *ngIf="r.purchaseUrl" [href]="r.purchaseUrl" target="_blank">קישור</a></td>
+        <td>{{ r.status }}</td>
+      </tr>
+    </tbody>
+  </table>
+  <p *ngIf="recommendations.length === 0">אין המלצות רכש</p>
+
+  <h2>הוספת המלצה ידנית</h2>
+  <form (ngSubmit)="submit()">
+    <div class="field">
+      <label>מזהה מוצר</label>
+      <input type="number" [(ngModel)]="rec.productID" name="productID" required />
+    </div>
+    <div class="field">
+      <label>שם ספק</label>
+      <input type="text" [(ngModel)]="rec.supplierName" name="supplierName" required />
+    </div>
+    <div class="field">
+      <label>מחיר</label>
+      <input type="number" [(ngModel)]="rec.price" name="price" required />
+    </div>
+    <div class="field">
+      <label>קישור לרכישה</label>
+      <input type="text" [(ngModel)]="rec.purchaseUrl" name="purchaseUrl" />
+    </div>
+    <button type="submit">שמור המלצה</button>
+  </form>
+
+  <p class="success" *ngIf="success">✅ ההמלצה נשמרה בהצלחה!</p>
+</div>

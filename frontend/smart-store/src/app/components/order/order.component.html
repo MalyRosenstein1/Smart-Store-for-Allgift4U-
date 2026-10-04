@@ -1,0 +1,28 @@
+<div class="order-container">
+  <h2>עיבוד הזמנה</h2>
+
+  <div class="form">
+    <input
+      id="orderName"
+      name="orderName"
+      type="text"
+      [(ngModel)]="orderName"
+      placeholder="הזן שם הזמנה..."
+      [disabled]="loading"
+    />
+    <button type="button" (click)="processOrder()" [disabled]="loading || !orderName.trim()">
+      {{ loading ? 'מעבד...' : 'שלח הזמנה' }}
+    </button>
+  </div>
+
+  <div class="success" *ngIf="result">
+    <p>✅ ההזמנה <strong>{{ result.orderName }}</strong> עובדה בהצלחה</p>
+    <ul>
+      <li *ngFor="let item of result.items">
+        {{ item.productName }} — הוסר: {{ item.quantityRemoved }}, נשאר: {{ item.newQuantity }}
+        <span *ngIf="item.aiTriggered"> 🤖 AI הופעל</span>
+      </li>
+    </ul>
+  </div>
+  <p class="error" *ngIf="error">❌ {{ error }}</p>
+</div>

@@ -1,0 +1,121 @@
+<div class="chat-wrapper">
+
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo-text">
+        <span class="logo-main">Allgift<span class="logo-4u">4U</span></span>
+      </div>
+      <div class="sidebar-subtitle">HISTORY </div>
+    </div>
+
+    <div class="sidebar-search">
+      <span class="search-icon">🔍</span>
+      <input type="text" [(ngModel)]="searchQuery" placeholder="...הפש עובד או הזמנה" />
+      <span class="calendar-icon">📅</span>
+    </div>
+
+    <div class="active-staff-section">
+      <div class="staff-item active">
+        <div class="staff-avatar">{{ auth.username[0].toUpperCase() }}</div>
+        <div class="staff-info">
+          <span class="staff-name">{{ auth.username }}</span>
+        </div>
+        <span class="online-badge"><span class="online-dot"></span>Online</span>
+      </div>
+    </div>
+
+    <!-- Conversation History -->
+    <div class="history-label">
+      <span>היסטוריית שיחות / Conversation History</span>
+    </div>
+
+    <div class="history-list">
+      <div *ngFor="let session of filteredSessions; trackBy: trackBySessionId"
+           class="history-item"
+           [class.active]="currentSessionId === session.id"
+           (click)="loadSession(session)">
+        <div class="history-avatar">{{ session.username[0].toUpperCase() }}</div>
+        <div class="history-text">
+          <span class="history-name">{{ session.username }}</span>
+          <span class="history-preview">{{ getLastMessage(session) }}</span>
+        </div>
+        <span class="history-time">{{ session.startedAt }}</span>
+      </div>
+      <div class="no-history" *ngIf="filteredSessions.length === 0">
+        <span>אין שיחות קודמות</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-box">
+
+    <div class="chat-header">
+      <div class="header-left">
+        <div class="header-avatar"></div>
+        <div class="header-name">{{ auth.username }}</div>
+      </div>
+      <div class="header-logo">Allgift<span class="logo-accent">4U</span></div>
+    </div>
+
+    <div class="chat-messages" #messagesContainer>
+      <div class="date-separator">Today</div>
+
+      <div *ngFor="let msg of messages; let i = index" 
+           class="message" 
+           [class.user]="msg.role === 'user'"
+           [class.bot]="msg.role === 'bot'">
+        <div class="avatar">
+          <span *ngIf="msg.role === 'bot'">🤖</span>
+        </div>
+        <div class="bubble-wrap">
+          <div class="bubble">
+            <p>{{ msg.text }}</p>
+            <span class="msg-time">{{ msg.timestamp }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="message bot" *ngIf="loading">
+        <div class="avatar">🤖</div>
+        <div class="bubble-wrap">
+          <div class="typing-bubble">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="image-preview-bar" *ngIf="imagePreview">
+      <img [src]="imagePreview" alt="Preview" />
+      <span>תמונה מוכנה לשליחה</span>
+      <button type="button" class="remove-img" (click)="clearImage()">✕</button>
+    </div>
+
+    <div class="chat-input-area">
+      <input #imgFileInput type="file" accept="image/*" (change)="onFileSelected($event)" style="display:none" />
+      
+      <div class="input-left">
+        <button type="button" class="action-btn" (click)="toggleInputEmoji($event)" title="Emoji" [disabled]="loading">😊</button>
+        <button type="button" class="action-btn" (click)="imgFileInput.click()" title="Attachment" [disabled]="loading">📎</button>
+        <button type="button" class="action-btn" (click)="imgFileInput.click()" title="Image" [disabled]="loading">🖼️</button>
+        
+        <div class="emoji-picker input-emoji-picker" *ngIf="showInputEmoji" (click)="$event.stopPropagation()">
+          <span *ngFor="let e of emojiList" class="emoji-item" (click)="addEmojiToInput(e)">{{ e }}</span>
+        </div>
+      </div>
+      
+      <input 
+        type="text" 
+        class="text-input" 
+        [(ngModel)]="input"
+        (keydown)="onEnter($event)"
+        [placeholder]="imagePreview ? 'הוסף תיאור...' : 'שם הזמנה לעיבוד...'"
+        [disabled]="loading" />
+      
+      <div class="input-right">
+        <button type="button" class="action-btn send-btn" (click)="send()" [disabled]="loading || (!input.trim() && !imagePreview)">שלח</button>
+      </div>
+    </div>
+
+  </div>
+</div>

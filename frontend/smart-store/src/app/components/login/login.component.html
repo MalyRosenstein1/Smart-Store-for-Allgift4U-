@@ -1,0 +1,37 @@
+<div class="login-wrapper">
+  <div class="login-card">
+    <div class="login-icon">🎁</div>
+    <h1 class="login-title">All Gift 4U</h1>
+
+    <form (ngSubmit)="onSubmit()" #loginForm="ngForm" autocomplete="off">
+      <div class="field">
+        <label for="username">שם משתמש</label>
+        <input
+          id="username"
+          name="username"
+          type="text"
+          [(ngModel)]="username"
+          placeholder="הכנס שם משתמש"
+          required
+          autofocus
+        />
+      </div>
+
+      <div class="field">
+        <label for="password">סיסמא</label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          [(ngModel)]="password"
+          placeholder="הכנס סיסמא"
+          required
+        />
+      </div>
+
+      <div class="error" *ngIf="error">{{ error }}</div>
+
+      <button type="submit" [disabled]="!username || !password">כניסה</button>
+    </form>
+  </div>
+</div>
